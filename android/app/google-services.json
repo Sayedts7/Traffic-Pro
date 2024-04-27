@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "878941136277",
+    "project_id": "traffic-pro-b76a1",
+    "storage_bucket": "traffic-pro-b76a1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878941136277:android:0a4bae5614e1f7be41429c",
+        "android_client_info": {
+          "package_name": "com.example.traffic_pro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAE45-FyPtoR_MLw9VApEOqf99G43kw-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878941136277:android:42d4d53bf41ded7241429c",
+        "android_client_info": {
+          "package_name": "com.st.traffic_pro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAE45-FyPtoR_MLw9VApEOqf99G43kw-0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
