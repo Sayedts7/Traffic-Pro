@@ -4,7 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_compass/flutter_compass.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -16,6 +18,7 @@ import 'package:traffic_pro/ui/auth/login/login_view.dart';
 import 'package:traffic_pro/ui/profile/profile_view.dart';
 import 'dart:math' as math;
 
+import '../../core/services/Maps functions.dart';
 import '../../core/utils/functions.dart';
 import '../../core/utils/image_paths.dart';
 import '../../core/utils/mySize.dart';
@@ -23,6 +26,19 @@ import '../../core/utils/theme_helper.dart';
 import '../qibla/qibla.dart';
 
 import '../tests/test1.dart';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+
+import 'dart:math' show cos, sqrt, asin;
+
+import '../../core/services/Maps functions.dart';
+
 
 
 class HomeScreen extends StatefulWidget {
@@ -34,374 +50,279 @@ class HomeScreen extends StatefulWidget {
 }
 
 class HomeScreenState extends State<HomeScreen> {
+  bool search = false;
+
+  // from test class
+  late GoogleMapController mapController;
+
+  late Position _currentPosition;
+  String _currentAddress = '';
+
+  final startAddressController = TextEditingController();
+  final destinationAddressController = TextEditingController();
+
+  final startAddressFocusNode = FocusNode();
+  final desrinationAddressFocusNode = FocusNode();
+
+  String _startAddress = '';
+  String _destinationAddress = '';
+  String? _placeDistance;
+  // Set<Marker> markers = {};
+
+  late PolylinePoints polylinePoints;
+  Map<PolylineId, Polyline> polylines = {};
+  List<LatLng> polylineCoordinates = [];
+
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  _getCurrentLocation() async {
+    await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
+        .then((Position position) async {
+      setState(() {
+        _currentPosition = position;
+        print('CURRENT POS: $_currentPosition');
+        mapController.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(position.latitude, position.longitude),
+              zoom: 18.0,
+            ),
+          ),
+        );
+      });
+      await _getAddress();
+    }).catchError((e) {
+      print(e);
+    });
+  }
+
+
+  // Method for retrieving the current location
+  String distanceText = '';
+  String travelTimeText = '';
+
+
+  Future<void> calculateDistanceAndTime() async {
+
+    final url =
+        'https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=$_startAddress&destinations=$_destinationAddress&mode=driving&key=AIzaSyCUO40W_nDrilaL-2ny5RcWYpzHdlNil-M';
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final elements = data['rows'][0]['elements'];
+      final distance = elements[0]['distance']['value'];
+      final duration = elements[0]['duration']['value'];
+
+      setState(() {
+        distanceText = '${distance / 1000} km';
+        travelTimeText = '${Duration(seconds: duration).inMinutes} mins';
+      });
+
+      // Check for markers along the route (implementation details omitted for brevity)
+    } else {
+      // Handle API errors
+    }
+  }
+
+
+  // Method for retrieving the address
+  _getAddress() async {
+    try {
+      List<Placemark> p = await placemarkFromCoordinates(
+          _currentPosition.latitude, _currentPosition.longitude);
+
+      Placemark place = p[0];
+
+      setState(() {
+        _currentAddress =
+        "${place.name}, ${place.locality}, ${place.postalCode}, ${place.country}";
+        startAddressController.text = _currentAddress;
+        _startAddress = _currentAddress;
+      });
+    } catch (e) {
+      print(e);
+    }
+  }
+
+  // Method for calculating the distance between two places
+  Future<bool> _calculateDistance() async {
+    try {
+      // Retrieving placemarks from addresses
+      List<Location>? startPlacemark = await locationFromAddress(_startAddress);
+      List<Location>? destinationPlacemark =
+      await locationFromAddress(_destinationAddress);
+
+      // Use the retrieved coordinates of the current position,
+      // instead of the address if the start position is user's
+      // current position, as it results in better accuracy.
+      double startLatitude = _startAddress == _currentAddress
+          ? _currentPosition.latitude
+          : startPlacemark[0].latitude;
+
+      double startLongitude = _startAddress == _currentAddress
+          ? _currentPosition.longitude
+          : startPlacemark[0].longitude;
+
+      double destinationLatitude = destinationPlacemark[0].latitude;
+      double destinationLongitude = destinationPlacemark[0].longitude;
+
+      String startCoordinatesString = '($startLatitude, $startLongitude)';
+      String destinationCoordinatesString =
+          '($destinationLatitude, $destinationLongitude)';
+
+      // Start Location Marker
+      Marker startMarker = Marker(
+        markerId: MarkerId(startCoordinatesString),
+        position: LatLng(startLatitude, startLongitude),
+        infoWindow: InfoWindow(
+          title: 'Start $startCoordinatesString',
+          snippet: _startAddress,
+        ),
+        icon: BitmapDescriptor.defaultMarker,
+      );
+
+      // Destination Location Marker
+      Marker destinationMarker = Marker(
+        markerId: MarkerId(destinationCoordinatesString),
+        position: LatLng(destinationLatitude, destinationLongitude),
+        infoWindow: InfoWindow(
+          title: 'Destination $destinationCoordinatesString',
+          snippet: _destinationAddress,
+        ),
+        icon: BitmapDescriptor.defaultMarker,
+      );
+
+      // Adding the markers to the list
+      _marker.add(startMarker);
+      _marker.add(destinationMarker);
+
+      print(
+        'START COORDINATES: ($startLatitude, $startLongitude)',
+      );
+      print(
+        'DESTINATION COORDINATES: ($destinationLatitude, $destinationLongitude)',
+      );
+
+      // Calculating to check that the position relative
+      // to the frame, and pan & zoom the camera accordingly.
+      double miny = (startLatitude <= destinationLatitude)
+          ? startLatitude
+          : destinationLatitude;
+      double minx = (startLongitude <= destinationLongitude)
+          ? startLongitude
+          : destinationLongitude;
+      double maxy = (startLatitude <= destinationLatitude)
+          ? destinationLatitude
+          : startLatitude;
+      double maxx = (startLongitude <= destinationLongitude)
+          ? destinationLongitude
+          : startLongitude;
+
+      double southWestLatitude = miny;
+      double southWestLongitude = minx;
+
+      double northEastLatitude = maxy;
+      double northEastLongitude = maxx;
+
+      // Accommodate the two locations within the
+      // camera view of the map
+      mapController.animateCamera(
+        CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+            northeast: LatLng(northEastLatitude, northEastLongitude),
+            southwest: LatLng(southWestLatitude, southWestLongitude),
+          ),
+          100.0,
+        ),
+      );
+
+      // Calculating the distance between the start and the end positions
+      // with a straight path, without considering any route
+      // double distanceInMeters = await Geolocator().bearingBetween(
+      //   startCoordinates.latitude,
+      //   startCoordinates.longitude,
+      //   destinationCoordinates.latitude,
+      //   destinationCoordinates.longitude,
+      // );
+
+      await _createPolylines(startLatitude, startLongitude, destinationLatitude,
+          destinationLongitude);
+
+      double totalDistance = 0.0;
+
+      // Calculating the total distance by adding the distance
+      // between small segments
+      for (int i = 0; i < polylineCoordinates.length - 1; i++) {
+        totalDistance += _coordinateDistance(
+          polylineCoordinates[i].latitude,
+          polylineCoordinates[i].longitude,
+          polylineCoordinates[i + 1].latitude,
+          polylineCoordinates[i + 1].longitude,
+        );
+      }
+
+      setState(() {
+        _placeDistance = totalDistance.toStringAsFixed(2);
+        print('DISTANCE: $_placeDistance km');
+      });
+
+      return true;
+    } catch (e) {
+      print(e);
+    }
+    return false;
+  }
+
+  // Formula for calculating distance between two coordinates
+  // https://stackoverflow.com/a/54138876/11910277
+  double _coordinateDistance(lat1, lon1, lat2, lon2) {
+    var p = 0.017453292519943295;
+    var c = cos;
+    var a = 0.5 -
+        c((lat2 - lat1) * p) / 2 +
+        c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
+    return 12742 * asin(sqrt(a));
+  }
+
+  // Create the polylines for showing the route between two places
+  _createPolylines(
+      double startLatitude,
+      double startLongitude,
+      double destinationLatitude,
+      double destinationLongitude,
+      ) async {
+    polylinePoints = PolylinePoints();
+    PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
+      'AIzaSyCUO40W_nDrilaL-2ny5RcWYpzHdlNil-M', // Google Maps API Key
+      PointLatLng(startLatitude, startLongitude),
+      PointLatLng(destinationLatitude, destinationLongitude),
+      travelMode: TravelMode.driving ,
+    );
+
+    if (result.points.isNotEmpty) {
+      result.points.forEach((PointLatLng point) {
+        polylineCoordinates.add(LatLng(point.latitude, point.longitude));
+      });
+    }
+
+    PolylineId id = PolylineId('poly');
+    Polyline polyline = Polyline(
+      polylineId: id,
+      color: Colors.red,
+      points: polylineCoordinates,
+      width: 3,
+    );
+    polylines[id] = polyline;
+  }
+
+  //////////////////////////////////////////////////
   bool _hasPermissions = false;
   AuthService authService = AuthService();
   final Completer<GoogleMapController> _mapController =
   Completer<GoogleMapController>();
   final List<Marker> _marker = <Marker>[];
 
-  // final List<LatLng> _list = <LatLng>[
-  //   const LatLng(33.977679, 71.446128),
-  //   const LatLng(33.997276, 71.464931),
-  // ];
-  // final List<LatLng> _list2 = <LatLng>[
-  //   const LatLng(  33.995970, 71.459224
-  //   ),
-  //   const LatLng(33.992329, 71.456626),
-  // ];
-
-
-  // loadData() async {
-  //
-  //   print(_list.length);
-  //   for (int i = 0; i < _list.length; i++) {
-  //     final Uint8List markerIcon = await getBytesfromassets(icpolice, 80);
-  //
-  //     _marker.add(
-  //       Marker(
-  //         markerId: MarkerId(i.toString()),
-  //
-  //         icon: BitmapDescriptor.fromBytes(markerIcon),
-  //         // onTap: () {
-  //         //   _customInfoWindowController.addInfoWindow!(
-  //         //       Padding(
-  //         //         padding:  EdgeInsets.symmetric(horizontal: MySize2.size40,vertical: MySize2.size20),
-  //         //         child: Container(
-  //         //
-  //         //           decoration: BoxDecoration(
-  //         //             borderRadius: BorderRadius.circular(15),
-  //         //             color: primaryColor,
-  //         //           ),
-  //         //           child: StreamBuilder<QuerySnapshot>(
-  //         //               stream: FirebaseFirestore.instance.collection('BoatData').snapshots(),
-  //         //               builder: (context, snapshot) {
-  //         //                 if(snapshot.hasError){
-  //         //                   return Icon(Icons.error);
-  //         //                 }
-  //         //                 else if(snapshot.hasData){
-  //         //                   var snap =snapshot.data!.docs[i];
-  //         //                   String boatId = snap['boatId'];
-  //         //                   return Stack(
-  //         //                     clipBehavior: Clip.none,
-  //         //                     children: [
-  //         //                       Positioned(
-  //         //                         top: -MySize2.size40,
-  //         //                         left: MySize2.size15,
-  //         //                         child: Container(
-  //         //                             height: MySize2.size80,
-  //         //                             width:MySize2.size140,
-  //         //                             clipBehavior: Clip.hardEdge,
-  //         //                             decoration: BoxDecoration(
-  //         //                                 borderRadius: BorderRadius.circular(15)
-  //         //                             ),
-  //         //                             child: CachedNetworkImage(
-  //         //                               imageUrl: snap['image1'],
-  //         //                               fit: BoxFit.cover,
-  //         //                               placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-  //         //                               errorWidget: (context, url, error) => const Icon(Icons.error),)
-  //         //                         ),
-  //         //                       ),
-  //         //
-  //         //                       Column(
-  //         //                         crossAxisAlignment: CrossAxisAlignment.start,
-  //         //                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //         //                         children: [
-  //         //                           Padding(
-  //         //                             padding:  EdgeInsets.only(left: MySize2.size15, top: MySize2.size15),
-  //         //                             child: Column(
-  //         //                               crossAxisAlignment: CrossAxisAlignment.start,
-  //         //                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //         //
-  //         //                               children: [
-  //         //                                 // Row(
-  //         //                                 //   children: [
-  //         //                                 //     Container(
-  //         //                                 //       height: 80,
-  //         //                                 //       width: 120,
-  //         //                                 //       child: CachedNetworkImage(
-  //         //                                 //         imageUrl: snap['image1'],
-  //         //                                 //         fit: BoxFit.cover,
-  //         //                                 //         placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-  //         //                                 //         errorWidget: (context, url, error) => const Icon(Icons.error),)
-  //         //                                 //     ),
-  //         //                                 //     SizedBox(width: 10,),
-  //         //                                 //
-  //         //                                 //   ],
-  //         //                                 // ),
-  //         //                                 SizedBox(height: MySize2.size30,),
-  //         //                                 Row(
-  //         //                                   mainAxisAlignment: MainAxisAlignment.start,
-  //         //
-  //         //                                   children: [
-  //         //                                     Text(snap['boatType'], style: TextStyle(
-  //         //                                         color: Colors.white,
-  //         //                                         fontSize: MySize2.size12, fontWeight: FontWeight.w500
-  //         //                                     ),),
-  //         //
-  //         //                                   ],
-  //         //                                 ),
-  //         //                                 Row(
-  //         //                                   mainAxisAlignment: MainAxisAlignment.start,
-  //         //                                   children: [
-  //         //                                     Icon(Icons.location_on, color: Colors.white.withOpacity(0.5),size: 8,),
-  //         //
-  //         //                                     Text(snap['area'], style: TextStyle(
-  //         //                                         fontSize: MySize2.size6, fontWeight: FontWeight.w400,
-  //         //                                         color: Colors.white
-  //         //                                     ),overflow: TextOverflow.ellipsis,),
-  //         //                                   ],
-  //         //                                 ),
-  //         //
-  //         //                                 Row(
-  //         //                                   mainAxisAlignment: MainAxisAlignment.start,
-  //         //
-  //         //                                   children: [
-  //         //
-  //         //                                     Container(
-  //         //                                       width: width(context)*0.2,
-  //         //                                       child: Text('\$ '+snap['boatPrice'], style: TextStyle(
-  //         //                                           fontSize: MySize2.size10, fontWeight: FontWeight.w500,
-  //         //                                           color: Colors.white
-  //         //                                       ),overflow: TextOverflow.ellipsis,),
-  //         //                                     ),
-  //         //                                   ],
-  //         //                                 ),
-  //         //
-  //         //
-  //         //
-  //         //
-  //         //                               ],
-  //         //                             ),
-  //         //                           ),
-  //         //
-  //         //                           Container(
-  //         //                             width: width(context),
-  //         //                             height: MySize2.size40,
-  //         //                             decoration: const BoxDecoration(
-  //         //                                 color: Colors.white,
-  //         //                                 borderRadius: BorderRadius.only(bottomLeft: Radius.circular(15), bottomRight: Radius.circular(15))
-  //         //                             ),
-  //         //                             child: Padding(
-  //         //                               padding:  EdgeInsets.all(MySize2.size8),
-  //         //                               child: Row(
-  //         //                                 mainAxisAlignment: MainAxisAlignment.center,
-  //         //                                 children: [
-  //         //                                   InkWell(
-  //         //                                       onTap: (){
-  //         //                                         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>
-  //         //                                             BoatDetails(boatId: snap['boatId'],
-  //         //                                               // index: i
-  //         //                                             )));
-  //         //                                       },
-  //         //                                       child: Text(AppLocale.viewDetails.getString(context),
-  //         //                                         style: TextStyle(fontSize: MySize2.size10, fontWeight: FontWeight.w400, color: greyText),)),
-  //         //                                 ],
-  //         //                               ),
-  //         //                             ),
-  //         //                           )
-  //         //                         ],
-  //         //                       ),
-  //         //                     ],
-  //         //                   );
-  //         //                 }else if(snapshot.connectionState == ConnectionState.waiting){
-  //         //                   return CircularProgressIndicator();
-  //         //                 }
-  //         //                 return Container();
-  //         //               }
-  //         //           ),
-  //         //         ),
-  //         //       ),
-  //         //       _list[i]);
-  //         // },
-  //         position: _list[i],
-  //         // infoWindow: InfoWindow(title: 'My Home')
-  //       ),
-  //     );
-  //     setState(() {});
-  //   }
-  // }
-  // loadData2() async {
-  //
-  //   print(_list2.length);
-  //   for (int i = 0; i < _list2.length; i++) {
-  //     final Uint8List markerIcon = await getBytesfromassets(icCrash, 150);
-  //
-  //     _marker.add(
-  //       Marker(
-  //         markerId: MarkerId((i+2).toString()),
-  //
-  //         icon: BitmapDescriptor.fromBytes(markerIcon),
-  //         // onTap: () {
-  //         //   _customInfoWindowController.addInfoWindow!(
-  //         //       Padding(
-  //         //         padding:  EdgeInsets.symmetric(horizontal: MySize2.size40,vertical: MySize2.size20),
-  //         //         child: Container(
-  //         //
-  //         //           decoration: BoxDecoration(
-  //         //             borderRadius: BorderRadius.circular(15),
-  //         //             color: primaryColor,
-  //         //           ),
-  //         //           child: StreamBuilder<QuerySnapshot>(
-  //         //               stream: FirebaseFirestore.instance.collection('BoatData').snapshots(),
-  //         //               builder: (context, snapshot) {
-  //         //                 if(snapshot.hasError){
-  //         //                   return Icon(Icons.error);
-  //         //                 }
-  //         //                 else if(snapshot.hasData){
-  //         //                   var snap =snapshot.data!.docs[i];
-  //         //                   String boatId = snap['boatId'];
-  //         //                   return Stack(
-  //         //                     clipBehavior: Clip.none,
-  //         //                     children: [
-  //         //                       Positioned(
-  //         //                         top: -MySize2.size40,
-  //         //                         left: MySize2.size15,
-  //         //                         child: Container(
-  //         //                             height: MySize2.size80,
-  //         //                             width:MySize2.size140,
-  //         //                             clipBehavior: Clip.hardEdge,
-  //         //                             decoration: BoxDecoration(
-  //         //                                 borderRadius: BorderRadius.circular(15)
-  //         //                             ),
-  //         //                             child: CachedNetworkImage(
-  //         //                               imageUrl: snap['image1'],
-  //         //                               fit: BoxFit.cover,
-  //         //                               placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-  //         //                               errorWidget: (context, url, error) => const Icon(Icons.error),)
-  //         //                         ),
-  //         //                       ),
-  //         //
-  //         //                       Column(
-  //         //                         crossAxisAlignment: CrossAxisAlignment.start,
-  //         //                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //         //                         children: [
-  //         //                           Padding(
-  //         //                             padding:  EdgeInsets.only(left: MySize2.size15, top: MySize2.size15),
-  //         //                             child: Column(
-  //         //                               crossAxisAlignment: CrossAxisAlignment.start,
-  //         //                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //         //
-  //         //                               children: [
-  //         //                                 // Row(
-  //         //                                 //   children: [
-  //         //                                 //     Container(
-  //         //                                 //       height: 80,
-  //         //                                 //       width: 120,
-  //         //                                 //       child: CachedNetworkImage(
-  //         //                                 //         imageUrl: snap['image1'],
-  //         //                                 //         fit: BoxFit.cover,
-  //         //                                 //         placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-  //         //                                 //         errorWidget: (context, url, error) => const Icon(Icons.error),)
-  //         //                                 //     ),
-  //         //                                 //     SizedBox(width: 10,),
-  //         //                                 //
-  //         //                                 //   ],
-  //         //                                 // ),
-  //         //                                 SizedBox(height: MySize2.size30,),
-  //         //                                 Row(
-  //         //                                   mainAxisAlignment: MainAxisAlignment.start,
-  //         //
-  //         //                                   children: [
-  //         //                                     Text(snap['boatType'], style: TextStyle(
-  //         //                                         color: Colors.white,
-  //         //                                         fontSize: MySize2.size12, fontWeight: FontWeight.w500
-  //         //                                     ),),
-  //         //
-  //         //                                   ],
-  //         //                                 ),
-  //         //                                 Row(
-  //         //                                   mainAxisAlignment: MainAxisAlignment.start,
-  //         //                                   children: [
-  //         //                                     Icon(Icons.location_on, color: Colors.white.withOpacity(0.5),size: 8,),
-  //         //
-  //         //                                     Text(snap['area'], style: TextStyle(
-  //         //                                         fontSize: MySize2.size6, fontWeight: FontWeight.w400,
-  //         //                                         color: Colors.white
-  //         //                                     ),overflow: TextOverflow.ellipsis,),
-  //         //                                   ],
-  //         //                                 ),
-  //         //
-  //         //                                 Row(
-  //         //                                   mainAxisAlignment: MainAxisAlignment.start,
-  //         //
-  //         //                                   children: [
-  //         //
-  //         //                                     Container(
-  //         //                                       width: width(context)*0.2,
-  //         //                                       child: Text('\$ '+snap['boatPrice'], style: TextStyle(
-  //         //                                           fontSize: MySize2.size10, fontWeight: FontWeight.w500,
-  //         //                                           color: Colors.white
-  //         //                                       ),overflow: TextOverflow.ellipsis,),
-  //         //                                     ),
-  //         //                                   ],
-  //         //                                 ),
-  //         //
-  //         //
-  //         //
-  //         //
-  //         //                               ],
-  //         //                             ),
-  //         //                           ),
-  //         //
-  //         //                           Container(
-  //         //                             width: width(context),
-  //         //                             height: MySize2.size40,
-  //         //                             decoration: const BoxDecoration(
-  //         //                                 color: Colors.white,
-  //         //                                 borderRadius: BorderRadius.only(bottomLeft: Radius.circular(15), bottomRight: Radius.circular(15))
-  //         //                             ),
-  //         //                             child: Padding(
-  //         //                               padding:  EdgeInsets.all(MySize2.size8),
-  //         //                               child: Row(
-  //         //                                 mainAxisAlignment: MainAxisAlignment.center,
-  //         //                                 children: [
-  //         //                                   InkWell(
-  //         //                                       onTap: (){
-  //         //                                         Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=>
-  //         //                                             BoatDetails(boatId: snap['boatId'],
-  //         //                                               // index: i
-  //         //                                             )));
-  //         //                                       },
-  //         //                                       child: Text(AppLocale.viewDetails.getString(context),
-  //         //                                         style: TextStyle(fontSize: MySize2.size10, fontWeight: FontWeight.w400, color: greyText),)),
-  //         //                                 ],
-  //         //                               ),
-  //         //                             ),
-  //         //                           )
-  //         //                         ],
-  //         //                       ),
-  //         //                     ],
-  //         //                   );
-  //         //                 }else if(snapshot.connectionState == ConnectionState.waiting){
-  //         //                   return CircularProgressIndicator();
-  //         //                 }
-  //         //                 return Container();
-  //         //               }
-  //         //           ),
-  //         //         ),
-  //         //       ),
-  //         //       _list[i]);
-  //         // },
-  //         position: _list2[i],
-  //         // infoWindow: InfoWindow(title: 'My Home')
-  //       ),
-  //     );
-  //     setState(() {});
-  //   }
-  // }
-
-  // final List<Marker> _marker = <Marker>[
-  //   Marker(
-  //     markerId: MarkerId('marker1'),
-  //     position: LatLng(33.977679, 71.446128),
-  //     icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-  //   ),
-  //   Marker(
-  //     markerId: MarkerId('marker2'),
-  //     position: LatLng(37.77483, -122.42942),
-  //     icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-  //   ),
-  // ];
 
 
   var _policeIcon;
@@ -448,6 +369,8 @@ class HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadCustomIcons();
+    _getCurrentLocation();
+
     // loadData2();
     // loadData();
 
@@ -489,6 +412,8 @@ class HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    var height = MediaQuery.of(context).size.height;
+    var width = MediaQuery.of(context).size.width;
 
     // _marker.add(
     //     Marker(
@@ -499,8 +424,9 @@ class HomeScreenState extends State<HomeScreen> {
     // );
     final eventprovider = Provider.of<EventTypeProvider>(context, listen: false);
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: ThemeColors.black1,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      // floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       body: SafeArea(
         child:StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('markers').snapshots(),
@@ -567,122 +493,299 @@ class HomeScreenState extends State<HomeScreen> {
                   // myLocationEnabled: true,
                   mapType: MapType.normal,
                   initialCameraPosition: CameraPosition(target: widget.userLocation, zoom: 14),
+                  polylines: Set<Polyline>.of(polylines.values),
+
                   onMapCreated: (GoogleMapController controller) {
-                    _mapController.complete(controller);
+                    mapController = controller;
+
+                    // _mapController.complete(controller);
                   },
                   markers: Set<Marker>.of(_marker),
 
                 ),
-                Positioned(
-                    top: 10,
-                    left: 20,
-                    child: Container(
+                Visibility(
+                  visible: search == true,
+                  child: SafeArea(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 10.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white70,
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(20.0),
+                            ),
+                          ),
+                          width: width * 0.9,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 10.0, bottom: 10.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    SizedBox(width: 20,),
+                                    Text(
+                                      'Places',
+                                      style: TextStyle(fontSize: 20.0),
+                                    ),
+                                    IconButton(onPressed: (){
+                                      setState(() {
+                                        search = false;
+                                      });
+                                      // Navigator.push(context, MaterialPageRoute(builder: (context)=> MapView(userLocation: widget.userLocation,)));
+                                    }, icon: Icon(Icons.close))
+                                  ],
+                                ),
+                                SizedBox(height: 10),
+                                textField(
+                                    label: 'Start',
+                                    hint: 'Choose starting point',
+                                    prefixIcon: Icon(Icons.looks_one),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(Icons.my_location),
+                                      onPressed: () {
+                                        startAddressController.text = _currentAddress;
+                                        _startAddress = _currentAddress;
+                                      },
+                                    ),
+                                    controller: startAddressController,
+                                    focusNode: startAddressFocusNode,
+                                    width: width,
+                                    locationCallback: (String value) {
+                                      setState(() {
+                                        _startAddress = value;
+                                      });
+                                    }),
+                                SizedBox(height: 10),
+                                textField(
+                                    label: 'Destination',
+                                    hint: 'Choose destination',
+                                    prefixIcon: Icon(Icons.looks_two),
+                                    controller: destinationAddressController,
+                                    focusNode: desrinationAddressFocusNode,
+                                    width: width,
+                                    locationCallback: (String value) {
+                                      setState(() {
+                                        _destinationAddress = value;
+                                      });
+                                    }),
+                                SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Visibility(
+                                      visible: _placeDistance == null ? false : true,
+                                      child: Text(
+                                        'DISTANCE: $_placeDistance km',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    Visibility(
+                                      visible: _placeDistance == null ? false : true,
+                                      child: Text(
+                                        distanceText +' '+ travelTimeText,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 5),
+                                ElevatedButton(
+                                  onPressed: (_startAddress != '' &&
+                                      _destinationAddress != '')
+                                      ? () async {
+                                    calculateDistanceAndTime();
+                                    startAddressFocusNode.unfocus();
+                                    desrinationAddressFocusNode.unfocus();
+                                    setState(() {
+                                      if (_marker.isNotEmpty) _marker.clear();
+                                      if (polylines.isNotEmpty)
+                                        polylines.clear();
+                                      if (polylineCoordinates.isNotEmpty)
+                                        polylineCoordinates.clear();
+                                      _placeDistance = null;
+                                    });
+
+                                    _calculateDistance().then((isCalculated) {
+                                      if (isCalculated) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Distance Calculated Sucessfully'),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Error Calculating Distance'),
+                                          ),
+                                        );
+                                      }
+                                    });
+                                  }
+                                      : null,
+                                  // color: Colors.red,
+                                  // shape: RoundedRectangleBorder(
+                                  //   borderRadius: BorderRadius.circular(20.0),
+                                  // ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      'Show Route'.toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                Visibility(
+                  visible: search == false,
+                  child: Positioned(
+                      top: 10,
+                      left: 20,
+                      child: Container(
+                          height: 50,
+                          width: 50,
+                          decoration: BoxDecoration(
+                              color: ThemeColors.black1,
+                              borderRadius: BorderRadius.circular(10)
+                          ),
+                          child: IconButton(onPressed: (){
+                            getDrawer();
+                          }, icon: const Icon(Icons.menu, color: Colors.white,)))),
+                ),
+                Visibility(
+                  visible: search == false,
+                  child: Positioned(
+                      top: 10,
+                      right: 20,
+
+                      child: Container(
                         height: 50,
                         width: 50,
                         decoration: BoxDecoration(
                             color: ThemeColors.black1,
                             borderRadius: BorderRadius.circular(10)
                         ),
-                        child: IconButton(onPressed: (){
-                          getDrawer();
-                        }, icon: const Icon(Icons.menu, color: Colors.white,)))),
-                Positioned(
-                    top: 10,
-                    right: 20,
-
-                    child: Container(
-                      height: 50,
-                      width: 50,
-                      decoration: BoxDecoration(
-                          color: ThemeColors.black1,
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      child: IconButton(icon: const Icon(Icons.compass_calibration_outlined, color: ThemeColors.fillColor,),
-                        onPressed: (){
-                          // Navigator.push(context, MaterialPageRoute(builder: (context)=> MyApp()));
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return Dialog(
-                                child: Container(
-                                  height: MySize.size320,
-                                  width: MySize.size350,
-                                  decoration: BoxDecoration(
-                                      color: ThemeColors.grey3,
-                                      borderRadius: BorderRadius.circular(20)
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Builder(builder: (context) {
-                                      if (_hasPermissions) {
-                                        return Column(
-                                          children: <Widget>[
-                                            Expanded(child: _buildCompass()),
-                                          ],
-                                        );
-                                      } else {
-                                        return _buildPermissionSheet();
-                                      }
-                                    }),
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-
-                        },),
-                    )),
-                Positioned(
-                    bottom: 120,
-                    right: 20,
-
-                    child: Container(
-                      height: 50,
-                      width: 50,
-                      decoration: BoxDecoration(
-                          color: ThemeColors.black1,
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      child: IconButton(icon:  const Icon(Icons.search, color: ThemeColors.fillColor,),
+                        child: IconButton(icon: const Icon(Icons.compass_calibration_outlined, color: ThemeColors.fillColor,),
                           onPressed: (){
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=> MapView(userLocation: widget.userLocation,)));
-                          }),
-                    )),
-                Positioned(
-                    bottom: 20,
-                    right: 20,
+                            // Navigator.push(context, MaterialPageRoute(builder: (context)=> MyApp()));
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return Dialog(
+                                  child: Container(
+                                    height: MySize.size320,
+                                    width: MySize.size350,
+                                    decoration: BoxDecoration(
+                                        color: ThemeColors.grey3,
+                                        borderRadius: BorderRadius.circular(20)
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Builder(builder: (context) {
+                                        if (_hasPermissions) {
+                                          return Column(
+                                            children: <Widget>[
+                                              Expanded(child: _buildCompass()),
+                                            ],
+                                          );
+                                        } else {
+                                          return _buildPermissionSheet();
+                                        }
+                                      }),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
 
-                    child: Container(
-                      height: 50,
-                      width: 50,
-                      decoration: BoxDecoration(
-                          color: ThemeColors.black1,
-                          borderRadius: BorderRadius.circular(10)
-                      ),
-                      child: IconButton(icon:  const Icon(Icons.warning, color: ThemeColors.fillColor,),
-                          onPressed: (){
-                            getMapItems(context);
-                          }),
-                    )),
-                Consumer<EventTypeProvider>(builder: (context, value,child){
-                  return   eventprovider.event == '' ? SizedBox():
-                  Positioned(
-                      bottom: 20,
-                      left: 20,
+                          },),
+                      )),
+                ),
+                Visibility(
+                  visible: search == false,
+                  child: Positioned(
+                      bottom: 120,
+                      right: 20,
 
                       child: Container(
-                          height: 50,
-                          // width: 150,
-                          decoration: BoxDecoration(
-                              color: ThemeColors.black1,
-                              borderRadius: BorderRadius.circular(10)
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Center(child: Text('Click on map to add ${eventprovider.event}',style: TextStyle(color: ThemeColors.fillColor),)),
-                          )
-                      ));
-                })
+                        height: 50,
+                        width: 50,
+                        decoration: BoxDecoration(
+                            color: ThemeColors.black1,
+                            borderRadius: BorderRadius.circular(10)
+                        ),
+                        child: IconButton(icon:  const Icon(Icons.search, color: ThemeColors.fillColor,),
+                            onPressed: (){
+                          setState(() {
+                            search = true;
+                          });
+                            }),
+                      )),
+                ),
+                Visibility(
+                  visible: search == false,
+                  child: Positioned(
+                      bottom: 20,
+                      right: 20,
+
+                      child: Container(
+                        height: 50,
+                        width: 50,
+                        decoration: BoxDecoration(
+                            color: ThemeColors.black1,
+                            borderRadius: BorderRadius.circular(10)
+                        ),
+                        child: IconButton(icon:  const Icon(Icons.warning, color: ThemeColors.fillColor,),
+                            onPressed: (){
+                              getMapItems(context);
+                            }),
+                      )),
+                ),
+                Visibility(
+                  visible: search == false,
+                  child: Consumer<EventTypeProvider>(builder: (context, value,child){
+                    return   eventprovider.event == '' ? SizedBox():
+                    Positioned(
+                        bottom: 20,
+                        left: 20,
+
+                        child: Container(
+                            height: 50,
+                            // width: 150,
+                            decoration: BoxDecoration(
+                                color: ThemeColors.black1,
+                                borderRadius: BorderRadius.circular(10)
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Center(child: Text('Click on map to add ${eventprovider.event}',style: TextStyle(color: ThemeColors.fillColor),)),
+                            )
+                        ));
+                  }),
+                )
 
 
               ],

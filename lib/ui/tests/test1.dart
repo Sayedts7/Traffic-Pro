@@ -9,8 +9,6 @@ import 'package:http/http.dart' as http;
 
 import 'dart:math' show cos, sqrt, asin;
 
-import '../../core/services/Maps functions.dart';
-
 
 class MapView extends StatefulWidget {
   final LatLng userLocation;
@@ -44,7 +42,54 @@ class _MapViewState extends State<MapView> {
 
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
-
+  Widget _textField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required String hint,
+    required double width,
+    required Icon prefixIcon,
+    Widget? suffixIcon,
+    required Function(String) locationCallback,
+  }) {
+    return Container(
+      width: width * 0.8,
+      child: TextField(
+        onChanged: (value) {
+          locationCallback(value);
+        },
+        controller: controller,
+        focusNode: focusNode,
+        decoration: InputDecoration(
+          prefixIcon: prefixIcon,
+          suffixIcon: suffixIcon,
+          labelText: label,
+          filled: true,
+          fillColor: Colors.white,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(10.0),
+            ),
+            borderSide: BorderSide(
+              color: Colors.grey.shade400,
+              width: 2,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(10.0),
+            ),
+            borderSide: BorderSide(
+              color: Colors.blue.shade300,
+              width: 2,
+            ),
+          ),
+          contentPadding: EdgeInsets.all(15),
+          hintText: hint,
+        ),
+      ),
+    );
+  }
 
   // Method for retrieving the current location
   _getCurrentLocation() async {
@@ -83,7 +128,8 @@ class _MapViewState extends State<MapView> {
 
       setState(() {
         distanceText = '${distance / 1000} km';
-        travelTimeText = '${Duration(seconds: duration).inMinutes} mins';
+        travelTimeText = '${Duration(seconds: duration).inHours} Hours';
+
       });
 
       // Check for markers along the route (implementation details omitted for brevity)
@@ -387,7 +433,7 @@ class _MapViewState extends State<MapView> {
                             style: TextStyle(fontSize: 20.0),
                           ),
                           SizedBox(height: 10),
-                          textField(
+                          _textField(
                               label: 'Start',
                               hint: 'Choose starting point',
                               prefixIcon: Icon(Icons.looks_one),
@@ -407,7 +453,7 @@ class _MapViewState extends State<MapView> {
                                 });
                               }),
                           SizedBox(height: 10),
-                          textField(
+                          _textField(
                               label: 'Destination',
                               hint: 'Choose destination',
                               prefixIcon: Icon(Icons.looks_two),
@@ -420,7 +466,7 @@ class _MapViewState extends State<MapView> {
                                 });
                               }),
                           SizedBox(height: 10),
-                          Row(
+                          Column(
                             children: [
                               Visibility(
                                 visible: _placeDistance == null ? false : true,
@@ -435,7 +481,7 @@ class _MapViewState extends State<MapView> {
                               Visibility(
                                 visible: _placeDistance == null ? false : true,
                                 child: Text(
-                                  distanceText +' '+ travelTimeText,
+                                  'Time ${travelTimeText}',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
