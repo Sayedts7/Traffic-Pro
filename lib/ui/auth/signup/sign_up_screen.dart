@@ -11,6 +11,8 @@ import 'package:traffic_pro/ui/auth/auth_controller.dart';
 import '../../../core/utils/image_paths.dart';
 import '../../../core/utils/mySize.dart';
 import '../../../core/utils/theme_helper.dart';
+import '../../Home/home_2_test.dart';
+import '../../Home/home_screen.dart';
 import '../../custom_widgets/custom_buttons.dart';
 import '../../custom_widgets/custom_textfields.dart';
 import '../login/login_provider.dart';
@@ -256,7 +258,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 var location = await CommonFunctions.getUserCurrentLocation();
                 LatLng userLocation = LatLng(location.latitude, location.longitude);
 
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=> HomeScreen(userLocation: userLocation)));
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context)=> HomeScreenView(userLocation: userLocation)));
               }).onError((error, stackTrace) {
                 print(error.toString());
                 obj.changeShowLoaderValue(false);

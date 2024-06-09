@@ -5,6 +5,8 @@ class CustomButton8 extends StatelessWidget {
   final String text;
   final Color? textColor;
   final double radius;
+  final double width;
+
   final Color? backgroundColor;
   final VoidCallback onPressed;
 
@@ -15,12 +17,13 @@ class CustomButton8 extends StatelessWidget {
     required this.onPressed,
     this.textColor,
     this.radius = 10,
+    this.width = double.infinity,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: double.infinity,
+      width: width,
       height: 50.0,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(

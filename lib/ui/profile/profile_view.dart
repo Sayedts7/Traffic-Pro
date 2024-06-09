@@ -24,9 +24,7 @@ class ProfileView extends StatefulWidget {
 class _ProfileViewState extends State<ProfileView> {
   final GlobalKey<FormState> _profileKey = GlobalKey<FormState>();
   TextEditingController emailController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
   TextEditingController fullnameController = TextEditingController();
-  TextEditingController contactController = TextEditingController();
 
   @override
   void initState() {
@@ -36,13 +34,13 @@ class _ProfileViewState extends State<ProfileView> {
 
   setInitialData() async {
     var data = await FirebaseFirestore.instance
-        .collection("users")
+        .collection("User")
         .doc(FirebaseAuth.instance.currentUser!.uid)
         .get();
     emailController.text = data["email"] ?? "";
-    passwordController.text = data["password"] ?? "";
-    fullnameController.text = data["fullname"] ?? "";
-    contactController.text = data["contact"] ?? "";
+    // passwordController.text = data["password"] ?? "";
+    fullnameController.text = data["name"] ?? "";
+    // contactController.text = data["contact"] ?? "";
   }
 
   @override
@@ -65,31 +63,6 @@ class _ProfileViewState extends State<ProfileView> {
             ),
             centerTitle: true,
             elevation: 0.0,
-            // backgroundColor: Colors.transparent,
-            actions: [
-              Consumer<ProfileProvider>(
-                builder: (context, p, child) => TextButton(
-                  onPressed: () {
-                    p.setEditBtnClicked(!p.editBtnClicked);
-                    CommonFunctions.closeKeyboard(context);
-                  },
-                  style: const ButtonStyle(
-                    overlayColor: MaterialStatePropertyAll(
-                      Colors.transparent,
-                    ),
-                  ),
-                  child: Text(
-                    'Edit',//AppLocalizations.of(context)!.edit.toString(),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: ThemeColors.mainColor,
-                      fontSize: MySize.size12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
           body: SafeArea(
             child: Consumer<ProfileProvider>(
@@ -103,6 +76,7 @@ class _ProfileViewState extends State<ProfileView> {
                         Padding(
                           padding: Spacing.horizontal(MySize.size32),
                           child: CustomTextField13(
+                            title: 'Name',
                             controller: fullnameController,
                             autoValidateMode:
                                 AutovalidateMode.onUserInteraction,
@@ -122,6 +96,7 @@ class _ProfileViewState extends State<ProfileView> {
                         Padding(
                           padding: Spacing.horizontal(MySize.size32),
                           child: CustomTextField13(
+                            title: 'Email',
                             controller: emailController,
                             autoValidateMode:
                                 AutovalidateMode.onUserInteraction,
@@ -136,114 +111,6 @@ class _ProfileViewState extends State<ProfileView> {
                           ),
                         ),
                         SizedBox(height: MySize.size15),
-                        Padding(
-                          padding: Spacing.horizontal(MySize.size32),
-                          child: CustomTextField13(
-                            controller: contactController,
-                            autoValidateMode:
-                                AutovalidateMode.onUserInteraction,
-                            keyboardType: TextInputType.text,
-                            hintText:'Contact',
-                            // AppLocalizations.of(context)!
-                            //     .contact
-                            //     .toString(),
-                            fillColor: ThemeColors.fillColor,
-                            readOnly: p.editBtnClicked,
-                            validator: (value) {
-                              return CommonFunctions.validateTextField(value);
-                            },
-                          ),
-                        ),
-                        SizedBox(height: MySize.size15),
-                        Padding(
-                          padding: Spacing.horizontal(MySize.size32),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: CustomTextField13(
-                                  controller: passwordController,
-                                  autoValidateMode:
-                                      AutovalidateMode.onUserInteraction,
-                                  keyboardType: TextInputType.text,
-                                  hintText: 'Password',
-                                  // AppLocalizations.of(context)!
-                                  //     .password
-                                  //     .toString(),
-                                  fillColor: ThemeColors.fillColor,
-                                  readOnly: p.editBtnClicked,
-                                  sufixIcon: p.obsecureText
-                                      ? GestureDetector(
-                                          onTap: () {
-                                            p.setObsecureText(!p.obsecureText);
-                                          },
-                                          child: const Icon(
-                                            Icons.visibility_off_outlined,
-                                            color: ThemeColors.mainColor,
-                                          ),
-                                        )
-                                      : GestureDetector(
-                                          onTap: () {
-                                            p.setObsecureText(!p.obsecureText);
-                                          },
-                                          child: const Icon(
-                                            Icons.visibility_outlined,
-                                            color: ThemeColors.mainColor,
-                                          ),
-                                        ),
-                                  obscureText: p.obsecureText,
-                                  validator: (value) {
-                                    return CommonFunctions.validateTextField(
-                                        value);
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Padding(
-                                padding: Spacing.only(top: MySize.size0),
-                                child: TextButton(
-                                  onPressed: () async {
-                                    // final obj = Provider.of<AppLanguage>(
-                                    //     context,
-                                    //     listen: false);
-                                    // obj.changeShowLoaderValue(true);
-                                   ///
-                                    // try {
-                                    //   await FirebaseAuth.instance
-                                    //       .sendPasswordResetEmail(
-                                    //           email: emailController.text)
-                                    //       .then((value) {
-                                    //     // obj.changeShowLoaderValue(false);
-                                    //
-                                    //     CommonFunctions.flushBarSuccessMessage(
-                                    //         "Reset Password Email Sent Successfully",
-                                    //         context);
-                                    //   });
-                                    // } on FirebaseAuthException catch (e) {
-                                    //   // obj.changeShowLoaderValue(false);
-                                    //
-                                    //   print(e.code);
-                                    //   CommonFunctions.flushBarErrorMessage(
-                                    //       "Error Occured", context);
-                                    // }
-                                  },
-                                  child: Text(
-                                    'Reset',
-                                    // AppLocalizations.of(context)!
-                                    //     .reset
-                                    //     .toString(),
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                      color: ThemeColors.mainColor,
-                                      fontSize: MySize.size14,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -261,34 +128,7 @@ class _ProfileViewState extends State<ProfileView> {
                               backgroundColor: ThemeColors.mainColor,
                               textColor: ThemeColors.fillColor,
                               onPressed: () async {
-                                // final obj = Provider.of<AppLanguage>(context,
-                                //     listen: false);
-                                // obj.changeShowLoaderValue(true);
 
-                              ///
-                              //   FirebaseAuth auth = FirebaseAuth.instance;
-                              //   FirebaseFirestore.instance
-                              //       .collection("User")
-                              //       .doc(auth.currentUser!.uid)
-                              //       .update(
-                              //     {
-                              //       "id": auth.currentUser!.uid,
-                              //       "fullname": fullnameController.text,
-                              //       // "email": emailController.text,
-                              //       "contact": contactController.text,
-                              //       "password": passwordController.text,
-                              //     },
-                              //   ).then((value) {
-                              //     // obj.changeShowLoaderValue(false);
-                              //     CommonFunctions.flushBarSuccessMessage(
-                              //         "Profile Updated Successfully", context);
-                              //     p.setEditBtnClicked(!p.editBtnClicked);
-                              //   }).onError((error, stackTrace) {
-                              //     // obj.changeShowLoaderValue(false);
-                              //     CommonFunctions.flushBarSuccessMessage(
-                              //         "Error Occurred", context);
-                              //     p.setEditBtnClicked(!p.editBtnClicked);
-                              //   });
                               },
                             ),
                           ),

@@ -43,7 +43,7 @@ class CustomTextField13 extends StatelessWidget {
       this.fillColor = fillColorDefaultValue,
       this.prefixIcon,
       this.sufixIcon,
-      this.textColor = Colors.black54,
+      this.textColor = Colors.black,
       this.onChanged,
       this.focusNode,
       this.inputFormatter = const <TextInputFormatter>[],
@@ -63,7 +63,7 @@ class CustomTextField13 extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: ThemeColors.black1,
+                    color: ThemeColors.fillColor,
                   ),
                 ),
               ),

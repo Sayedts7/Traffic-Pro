@@ -10,6 +10,7 @@ import '../../../core/utils/common_functions.dart';
 import '../../../core/utils/image_paths.dart';
 import '../../../core/utils/mySize.dart';
 import '../../../core/utils/theme_helper.dart';
+import '../../Home/home_2_test.dart';
 import '../../Home/homescreen.dart';
 import '../../custom_widgets/custom_buttons.dart';
 import '../../custom_widgets/custom_textfields.dart';
@@ -31,7 +32,7 @@ class _LoginViewState extends State<LoginView> {
   final GlobalKey<FormState> _loginKey = GlobalKey<FormState>();
 
   TextEditingController emailController = TextEditingController();
-  TextEditingController forgetPasswordController = TextEditingController();
+  // TextEditingController forgetPasswordController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
   // @override
@@ -139,7 +140,8 @@ class _LoginViewState extends State<LoginView> {
                       Padding(
                         padding: Spacing.horizontal(MySize.size32),
                         child: Consumer<LoginProvider>(
-                          builder: (context, p, child) => CustomTextField13(
+                          builder: (context, p, child) =>
+                              CustomTextField13(
                             controller: passwordController,
                             autoValidateMode:
                                 AutovalidateMode.onUserInteraction,
@@ -179,36 +181,36 @@ class _LoginViewState extends State<LoginView> {
                   ),
                 ),
                 SizedBox(height: MySize.size10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Padding(
-                      padding: Spacing.horizontal(MySize.size32),
-                      child: TextButton(
-                        onPressed: () {
-                          showCustomBottomSheet(context);
-                        },
-                        style: const ButtonStyle(
-                          overlayColor:
-                              MaterialStatePropertyAll(Colors.transparent),
-                        ),
-                        child: Text(
-                          'Forget Password?',
-                          // AppLocalizations.of(context)!
-                          //     .forgetpassword
-                          //     .toString(),
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: ThemeColors.fillColor,
-                            fontSize: MySize.size12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: MySize.size10),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.end,
+                //   children: [
+                //     Padding(
+                //       padding: Spacing.horizontal(MySize.size32),
+                //       child: TextButton(
+                //         onPressed: () {
+                //           showCustomBottomSheet(context);
+                //         },
+                //         style: const ButtonStyle(
+                //           overlayColor:
+                //               MaterialStatePropertyAll(Colors.transparent),
+                //         ),
+                //         child: Text(
+                //           'Forget Password?',
+                //           // AppLocalizations.of(context)!
+                //           //     .forgetpassword
+                //           //     .toString(),
+                //           textAlign: TextAlign.right,
+                //           style: TextStyle(
+                //             color: ThemeColors.fillColor,
+                //             fontSize: MySize.size12,
+                //             fontWeight: FontWeight.w500,
+                //           ),
+                //         ),
+                //       ),
+                //     ),
+                //   ],
+                // ),
+                SizedBox(height: MySize.size20),
                 Consumer<LoginProvider>(
                   builder: (context, p, child) => Padding(
                     padding: Spacing.horizontal(MySize.size32),
@@ -222,9 +224,7 @@ class _LoginViewState extends State<LoginView> {
                       onPressed: () async {
                         CommonFunctions.closeKeyboard(context);
                         if (_loginKey.currentState!.validate()) {
-                          // Navigator.push(context, MaterialPageRoute(builder: (context)=> const HomeScreen()));
-                          // p.signInWithEmailPassword(emailController.text,
-                          //     passwordController.text, context);
+
 
                           String email = emailController.text;
                           String password = passwordController.text;
@@ -242,11 +242,7 @@ class _LoginViewState extends State<LoginView> {
                             LatLng userLocation = LatLng(location.latitude, location.longitude);
                             p.changeShowLoaderValue(false);
 
-                            // Authentication successful, navigate to the next screen
-                            Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => HomeScreen(userLocation: userLocation)));
+
                           }
                           else{
                             p.changeShowLoaderValue(false);
@@ -275,66 +271,6 @@ class _LoginViewState extends State<LoginView> {
                   ),
                 ),
                 SizedBox(height: MySize.size20),
-                // Text(
-                //   'or',
-                //   // AppLocalizations.of(context)!.or.toString(),
-                //   textAlign: TextAlign.center,
-                //   style: TextStyle(
-                //     color: ThemeColors.grey1,
-                //     fontSize: MySize.size10,
-                //     fontWeight: FontWeight.w400,
-                //   ),
-                // ),
-                // SizedBox(height: MySize.size20),
-                // Consumer<LoginProvider>(
-                //   builder: (context, p, child) => Platform.isIOS
-                //       ? Padding(
-                //           padding: Spacing.horizontal(MySize.size32),
-                //           child: CustomSocialButton(
-                //             text: 'login apple',
-                //             // AppLocalizations.of(context)!
-                //             //     .loginwithapple
-                //             //     .toString(),
-                //             backgroundColor: Colors.black,
-                //             textColor: ThemeColors.bgColor,
-                //             image: icApplelogo,
-                //             radius: 30,
-                //             onPressed: () async {
-                //               // await p.signInWithApple(context);
-                //             },
-                //           ),
-                //         )
-                //       : Padding(
-                //           padding: Spacing.horizontal(MySize.size32),
-                //           child: CustomSocialButton(
-                //             text: 'Sign in with Google',
-                //             // AppLocalizations.of(context)!
-                //             //     .loginwithgoogle
-                //             //     .toString(),
-                //             radius: 30,
-                //             backgroundColor: ThemeColors.fillColor,
-                //             textColor: ThemeColors.mainColor,
-                //             image: icGoogleLogo,
-                //             onPressed: () async {
-                //               // await p.signInWithGoogle(context);
-                //             },
-                //           ),
-                //         ),
-                // ),
-                // SizedBox(height: MySize.size15),
-                // TextButton(
-                //   onPressed: () async {},
-                //   child: Text(
-                //     'Continue as guest',
-                //     // AppLocalizations.of(context)!.continueAsAGuest.toString(),
-                //     textAlign: TextAlign.center,
-                //     style: const TextStyle(
-                //       color: ThemeColors.mainColor,
-                //       fontSize: 12,
-                //       fontWeight: FontWeight.w500,
-                //     ),
-                //   ),
-                // ),
                 SizedBox(height: MySize.size30),
               ],
             ),
@@ -348,124 +284,9 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 
-  showCustomBottomSheet(BuildContext context) async {
-    return showModalBottomSheet(
-      backgroundColor: ThemeColors.black1,
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-      ),
-      builder: (context) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: MediaQuery.of(context).viewInsets,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: ThemeColors.grey4,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding:
-                        Spacing.fromLTRB(0, MySize.size40, 0, MySize.size50),
-                    child: const Align(
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Reset password',
-                        // AppLocalizations.of(context)!.resetPassword.toString(),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: ThemeColors.fillColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: Spacing.horizontal(MySize.size32),
-                    child: CustomTextField13(
-                      controller: forgetPasswordController,
-                      hintText: 'Enter your email',// AppLocalizations.of(context)!.email.toString(),
-                      autoValidateMode: AutovalidateMode.onUserInteraction,
-                      fillColor: ThemeColors.fillColor,
-                      validator: (value) {
-                        return CommonFunctions.validateTextField(value);
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: Spacing.fromLTRB(
-                        MySize.size32, MySize.size10, MySize.size32, MySize.size50),
-                    child: Text(
-                      'Forgot password',
-                      // AppLocalizations.of(context)!
-                      //     .forgetPasswordLink
-                      //     .toString(),
-                      style: TextStyle(
-                        color: ThemeColors.grey1,
-                        fontSize: MySize.size10,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                  Consumer<LoginProvider>(
-                    builder: (context, p, child) => Padding(
-                      padding: Spacing.fromLTRB(
-                          MySize.size32, 0, MySize.size32, MySize.size20),
-                      child: p.showLoader
-                          ? Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Theme.of(context).primaryColor,
-                                ),
-                              ),
-                            )
-                          : CustomButton8(
-                              text: 'Reset Password',
-                              // AppLocalizations.of(context)!
-                              //     .reset
-                              //     .toString(),
-                              onPressed: () async {
-                                CommonFunctions.closeKeyboard(context);
-                                if (forgetPasswordController.text.isNotEmpty) {
-                                  // p.forgotPassword(
-                                  //     forgetPasswordController.text, context);
-                                  clearTextFormFields();
-                                } else {
-                                  CommonFunctions.flushBarErrorMessage(
-                                    "Field is Required",
-                                    context,
-                                  );
-                                }
-                              },
-                        // gradient: ThemeColors.myGradient,
-                              backgroundColor: ThemeColors.mainColor,
-                              textColor: ThemeColors.fillColor,
-                            ),
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   clearTextFormFields() {
-    forgetPasswordController.clear();
+    // forgetPasswordController.clear();
     passwordController.clear();
     emailController.clear();
   }

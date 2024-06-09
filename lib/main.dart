@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:traffic_pro/core/providers/loading_provider.dart';
-import 'package:traffic_pro/providers/event_provider.dart';
+import 'package:traffic_pro/core/providers/event_provider.dart';
 import 'package:traffic_pro/ui/auth/login/login_provider.dart';
 import 'package:traffic_pro/ui/profile/profile_provider.dart';
 import 'package:traffic_pro/ui/splash_screen.dart';

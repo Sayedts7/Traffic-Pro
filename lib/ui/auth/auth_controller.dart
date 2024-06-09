@@ -115,6 +115,27 @@ CommonFunctions.loginFailedDialog(
     }
   }
 
+  final firestore = FirebaseFirestore.instance.collection('User');
+
+  Future<void> setData(String email, name, ) async {
+    final DocumentReference parentDocument = firestore.doc(FirebaseAuth.instance.currentUser!.uid);
+
+    await parentDocument.set({
+      'id': FirebaseAuth.instance.currentUser!.uid,
+      'name': name,
+      'email': email,
+      // 'phone': phone,
+      // 'verified': false,
+      'userType': 'User',
+      // 'signUpWith': type,
+      // 'notification': true,
+      // 'status':'Activate',
+      // 'isDeleted': false,
+      // 'deleteTime': '',
+    });
+
+    // Add a document to the subcollection
+  }
   // Sign in with Google
   // Future<UserCredential?> signInWithGoogle() async {
   //   try {
@@ -406,27 +427,7 @@ CommonFunctions.loginFailedDialog(
   //   );
   // }
 
-  final firestore = FirebaseFirestore.instance.collection('User');
 
-  Future<void> setData(String email, name, ) async {
-    final DocumentReference parentDocument = firestore.doc(FirebaseAuth.instance.currentUser!.uid);
-
-    await parentDocument.set({
-      'id': FirebaseAuth.instance.currentUser!.uid,
-      'name': name,
-      'email': email,
-      // 'phone': phone,
-      // 'verified': false,
-      'userType': 'User',
-      // 'signUpWith': type,
-      // 'notification': true,
-      // 'status':'Activate',
-      // 'isDeleted': false,
-      // 'deleteTime': '',
-    });
-
-    // Add a document to the subcollection
-  }
   // void _showDialog(BuildContext context, String message) {
   //   showDialog(
   //     context: context,
